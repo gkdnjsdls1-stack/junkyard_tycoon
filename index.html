@@ -1,0 +1,1787 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>고물상 타이쿤 - ASMR 자원순환 시뮬레이터</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; touch-action: none; margin: 0; padding: 0; }
+  body {
+    background: #141619;
+    color: #f1f5f9;
+    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100dvh;
+    overflow: hidden;
+  }
+  #app {
+    width: 100%;
+    max-width: 430px;
+    height: 100dvh;
+    max-height: 860px;
+    background: #1e2229;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    border-left: 2px solid #2e3440;
+    border-right: 2px solid #2e3440;
+    box-shadow: 0 0 40px rgba(0,0,0,0.8);
+  }
+  /* Top HUD */
+  #hud {
+    height: 52px;
+    background: #15181e;
+    border-bottom: 2px solid #2d333f;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    z-index: 20;
+  }
+  .gold-badge {
+    background: #272215;
+    border: 2px solid #eab308;
+    color: #fde047;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .hud-title {
+    font-weight: 800;
+    font-size: 14px;
+    color: #e2e8f0;
+    letter-spacing: -0.5px;
+  }
+  .icon-btn {
+    background: #282e38;
+    border: 2px solid #475569;
+    color: #f8fafc;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .icon-btn:active { transform: scale(0.95); }
+
+  /* Main Viewport */
+  #viewport {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+  }
+
+  /* Bottom Nav */
+  #nav {
+    height: 64px;
+    background: #15181e;
+    border-top: 2px solid #2d333f;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    padding: 6px;
+    z-index: 20;
+  }
+  .nav-btn {
+    background: #232832;
+    border: 2px solid #334155;
+    border-radius: 8px;
+    color: #94a3b8;
+    font-weight: 800;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    position: relative;
+    cursor: pointer;
+  }
+  .nav-btn.active {
+    background: #2d3748;
+    border-color: #38bdf8;
+    color: #ffffff;
+    box-shadow: inset 0 0 8px rgba(56,189,248,0.25);
+  }
+  .badge {
+    position: absolute;
+    top: -4px;
+    right: -2px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: 10px;
+    border: 1px solid #15181e;
+  }
+
+  /* Overlays & Modals */
+  .modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 12, 16, 0.78);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    padding: 20px;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal-card {
+    background: #1e242d;
+    border: 3px solid #475569;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 340px;
+    padding: 18px;
+    text-align: center;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.7);
+  }
+  .modal-card h3 { font-size: 17px; margin-bottom: 8px; color: #f8fafc; }
+  .modal-card p { font-size: 13px; color: #cbd5e1; line-height: 1.45; margin-bottom: 14px; }
+  .primary-btn {
+    width: 100%;
+    padding: 11px;
+    background: #10b981;
+    border: 2px solid #059669;
+    border-radius: 8px;
+    color: #06281e;
+    font-weight: 900;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .primary-btn:active { transform: scale(0.97); }
+  .secondary-btn {
+    width: 100%;
+    padding: 9px;
+    background: #334155;
+    border: 2px solid #475569;
+    border-radius: 8px;
+    color: #f1f5f9;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+
+  /* Sub-controls overlay for Yard / Explore */
+  #sub-bar {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    display: flex;
+    gap: 6px;
+    z-index: 15;
+    pointer-events: auto;
+  }
+  .chip-btn {
+    background: rgba(21, 24, 30, 0.92);
+    border: 2px solid #475569;
+    color: #e2e8f0;
+    padding: 5px 9px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .chip-btn.active { border-color: #fbbf24; color: #fde047; }
+
+  /* Shop list */
+  .shop-list {
+    max-height: 320px;
+    overflow-y: auto;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+    touch-action: pan-y;
+  }
+  .shop-item {
+    background: #151921;
+    border: 2px solid #334155;
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .shop-item-info { font-size: 12px; }
+  .shop-item-info strong { display: block; font-size: 13px; color: #f8fafc; margin-bottom: 2px; }
+  .shop-item-info span { color: #94a3b8; font-size: 11px; }
+  .buy-btn {
+    background: #eab308;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-weight: 900;
+    font-size: 12px;
+    color: #1e1b08;
+    cursor: pointer;
+    min-width: 72px;
+  }
+  .buy-btn:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div class="gold-badge"><span>G</span><span id="hud-gold">250</span></div>
+    <div class="hud-title" id="hud-title">동네 골목</div>
+    <div style="display:flex; gap:6px;">
+      <button class="icon-btn" id="btn-shop">상점</button>
+      <button class="icon-btn" id="btn-settings">설정</button>
+    </div>
+  </div>
+
+  <div id="viewport">
+    <div id="sub-bar"></div>
+    <canvas id="gameCanvas"></canvas>
+  </div>
+
+  <div id="nav">
+    <button class="nav-btn active" data-tab="explore">
+      <span>탐색</span>
+      <span class="badge" id="badge-cart">0/10</span>
+    </button>
+    <button class="nav-btn" data-tab="disassemble">
+      <span>해체</span>
+      <span class="badge" id="badge-dis" style="display:none;">0</span>
+    </button>
+    <button class="nav-btn" data-tab="process">
+      <span>가공</span>
+      <span class="badge" id="badge-proc" style="display:none;">0</span>
+    </button>
+    <button class="nav-btn" data-tab="yard">
+      <span>야적장</span>
+      <span class="badge" id="badge-yard" style="display:none;">0</span>
+    </button>
+  </div>
+
+  <!-- Result Showcase Modal (Manual Close) -->
+  <div class="modal-backdrop" id="result-modal">
+    <div class="modal-card">
+      <h3 id="res-title">벌크 블록 완성!</h3>
+      <canvas id="res-canvas" width="96" height="96" style="width:96px;height:96px;margin:8px auto;background:#13171e;border:2px solid #334155;border-radius:8px;"></canvas>
+      <p id="res-desc">초록 유리 벽돌 (S급 고순도)</p>
+      <button class="primary-btn" id="res-close">확인</button>
+    </div>
+  </div>
+
+  <!-- Shop / Region Modal -->
+  <div class="modal-backdrop" id="shop-modal">
+    <div class="modal-card" style="max-width:360px;">
+      <h3>도구 업그레이드 & 지역 해금</h3>
+      <div class="shop-list" id="shop-list"></div>
+      <button class="secondary-btn" id="shop-close">닫기</button>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-backdrop" id="settings-modal">
+    <div class="modal-card">
+      <h3>환경 설정</h3>
+      <p>진행 상황은 브라우저에 자동 저장됩니다.</p>
+      <button class="secondary-btn" id="toggle-sound">ASMR 효과음: ON</button>
+      <button class="secondary-btn" id="toggle-haptic">진동 피드백: ON</button>
+      <button class="secondary-btn" id="reset-save" style="border-color:#ef4444;color:#fca5a5;">데이터 초기화 (튜토리얼 재시작)</button>
+      <button class="primary-btn" id="settings-close" style="margin-top:12px;">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==========================================
+// 1. AUDIO & HAPTIC ENGINE (Procedural ASMR)
+// ==========================================
+class SoundEngine {
+  constructor() {
+    this.ctx = null;
+    this.enabled = true;
+    this.haptic = true;
+  }
+  unlock() {
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) this.ctx = new AC();
+    }
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+  }
+  vibrate(ms) {
+    if (this.haptic && navigator.vibrate) {
+      try { navigator.vibrate(ms); } catch(e) {}
+    }
+  }
+  play(type) {
+    if (!this.enabled) return;
+    this.unlock();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    if (type === 'pickup') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(520, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+      osc.start(now); osc.stop(now + 0.09);
+      this.vibrate(15);
+    } else if (type === 'pop') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(300, now);
+      osc.frequency.exponentialRampToValueAtTime(750, now + 0.07);
+      gain.gain.setValueAtTime(0.22, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      osc.start(now); osc.stop(now + 0.08);
+      this.vibrate(25);
+    } else if (type === 'peel') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(900, now);
+      osc.frequency.linearRampToValueAtTime(420, now + 0.14);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      osc.start(now); osc.stop(now + 0.15);
+      this.vibrate(12);
+    } else if (type === 'wash') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.exponentialRampToValueAtTime(620, now + 0.12);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+      osc.start(now); osc.stop(now + 0.13);
+    } else if (type === 'crush') {
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.linearRampToValueAtTime(75, now + 0.18);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.19);
+      osc.start(now); osc.stop(now + 0.19);
+      this.vibrate([20, 15, 25]);
+    } else if (type === 'fire') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(110, now);
+      osc.frequency.exponentialRampToValueAtTime(240, now + 0.12);
+      gain.gain.setValueAtTime(0.16, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+      osc.start(now); osc.stop(now + 0.13);
+      this.vibrate(18);
+    } else if (type === 'steam') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(1200, now);
+      osc.frequency.exponentialRampToValueAtTime(300, now + 0.35);
+      gain.gain.setValueAtTime(0.14, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
+      osc.start(now); osc.stop(now + 0.36);
+      this.vibrate(30);
+    } else if (type === 'press') {
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(95, now);
+      osc.frequency.exponentialRampToValueAtTime(42, now + 0.25);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
+      osc.start(now); osc.stop(now + 0.26);
+      this.vibrate(50);
+    } else if (type === 'snap') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(660, now);
+      osc.frequency.setValueAtTime(880, now + 0.05);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+      osc.start(now); osc.stop(now + 0.14);
+      this.vibrate(20);
+    } else if (type === 'reject') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.linearRampToValueAtTime(120, now + 0.15);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+      osc.start(now); osc.stop(now + 0.16);
+      this.vibrate([30, 30]);
+    } else if (type === 'coin') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(987, now);
+      osc.frequency.setValueAtTime(1318, now + 0.07);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+      osc.start(now); osc.stop(now + 0.28);
+      this.vibrate(35);
+    }
+  }
+}
+const sfx = new SoundEngine();
+
+// ==========================================
+// 2. GAME STATE & CONFIGURATION
+// ==========================================
+const REGIONS = [
+  { id: 'alley', name: '동네 골목', cost: 0, bg: '#262b34', items: ['soju', 'beer', 'can'] },
+  { id: 'market', name: '상가 뒷골목', cost: 500, bg: '#2b2623', items: ['oily_bottle', 'tin_can', 'can'] },
+  { id: 'beach', name: '바닷가 해변', cost: 1500, bg: '#233138', items: ['sea_glass', 'barnacle_iron', 'can'] },
+  { id: 'demolition', name: '철거 현장', cost: 3500, bg: '#2f2724', items: ['wire', 'rust_pipe', 'beer'] },
+  { id: 'factory', name: '전자 폐공장', cost: 8000, bg: '#1e262c', items: ['radio', 'wire', 'tin_can'] },
+  { id: 'event_river', name: '🌧️ 비 온 뒤 하천변', cost: 0, event: true, bg: '#1e2c36', items: ['sea_glass', 'treasure', 'soju'] },
+  { id: 'event_festival', name: '🎉 축제 다음 날 광장', cost: 0, event: true, bg: '#2d2436', items: ['can', 'beer', 'soju'] }
+];
+
+const BULK_META = {
+  green_glass: { name: '초록 유리 벽돌', base: 140, color: '#10b981', top: '#34d399', side: '#059669' },
+  brown_glass: { name: '갈색 유리 벽돌', base: 160, color: '#b45309', top: '#d97706', side: '#78350f' },
+  sea_glass_blk: { name: '바다유리 벽돌', base: 260, color: '#06b6d4', top: '#67e8f9', side: '#0e7490' },
+  alu_cube: { name: '알루미늄 큐브', base: 190, color: '#94a3b8', top: '#cbd5e1', side: '#64748b' },
+  steel_block: { name: '강철 압축 블록', base: 230, color: '#475569', top: '#94a3b8', side: '#334155' },
+  copper_ingot: { name: '순동 구리 주괴', base: 380, color: '#ea580c', top: '#fb923c', side: '#9a3412' },
+  gold_bar: { name: '24K 골드바', base: 950, color: '#eab308', top: '#fef08a', side: '#a16207' }
+};
+
+const TREASURES = [
+  { id: 'watch', name: '깨진 회중시계', color: '#fbbf24' },
+  { id: 'gameboy', name: '레트로 휴대용 게임기', color: '#a855f7' },
+  { id: 'camera', name: '필름 카메라', color: '#38bdf8' },
+  { id: 'medal', name: '오래된 우승 메달', color: '#f97316' }
+];
+
+const defaultState = () => ({
+  gold: 250,
+  tab: 'explore',
+  regionId: 'alley',
+  unlockedRegions: ['alley'],
+  upgrades: { cart: 1, washer: 1, tool: 1, furnace: 1 },
+  cart: [],
+  storage: { green_glass: 0, brown_glass: 0, sea_glass: 0, alu: 0, iron: 0, copper: 0, gold: 0 },
+  storageQuality: { green_glass: [], brown_glass: [], sea_glass: [], alu: [], iron: [], copper: [], gold: [] },
+  crucible: { type: null, count: 0, temp: 0, melted: false, clean: true },
+  press: { type: null, count: 0, progress: 0, clean: true },
+  processLine: 'melt', // 'melt' | 'press'
+  yardQueue: [], // { id, type, grade }
+  pallet: Array(12).fill(null), // 4x3 grid
+  yardView: 'pallet', // 'pallet' | 'showcase'
+  treasures: [],
+  marketRates: { green_glass: 1.1, brown_glass: 1.0, sea_glass_blk: 1.25, alu_cube: 0.95, steel_block: 1.05, copper_ingot: 1.3, gold_bar: 1.15 },
+  tutorialStep: 0, // 0..6, 99 = done
+  sound: true,
+  haptic: true
+});
+
+let state = defaultState();
+function loadState() {
+  try {
+    const raw = localStorage.getItem('junkyard_tycoon_v1');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      state = { ...defaultState(), ...parsed };
+      sfx.enabled = state.sound;
+      sfx.haptic = state.haptic;
+    }
+  } catch(e) {}
+}
+function saveState() {
+  try {
+    localStorage.setItem('junkyard_tycoon_v1', JSON.stringify(state));
+  } catch(e) {}
+}
+loadState();
+
+// ==========================================
+// 3. PIXEL ART RENDERER HELPERS (100% Custom)
+// ==========================================
+function drawPixelRect(ctx, x, y, w, h, fill, border) {
+  ctx.fillStyle = fill;
+  ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+  if (border) {
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(Math.round(x)+1, Math.round(y)+1, Math.round(w)-2, Math.round(h)-2);
+  }
+}
+
+function drawItemSprite(ctx, item, cx, cy, scale = 1) {
+  ctx.save();
+  ctx.translate(Math.round(cx), Math.round(cy));
+  ctx.scale(scale, scale);
+  const t = item.type;
+
+  if (t === 'soju' || t === 'beer' || t === 'oily_bottle' || t === 'sea_glass') {
+    const bodyCol = t === 'beer' ? '#b45309' : (t === 'sea_glass' ? '#06b6d4' : '#10b981');
+    const darkCol = t === 'beer' ? '#78350f' : (t === 'sea_glass' ? '#0e7490' : '#047857');
+    // Bottle body
+    drawPixelRect(ctx, -14, -10, 28, 42, bodyCol, '#0f172a');
+    drawPixelRect(ctx, -8, -28, 16, 20, bodyCol, '#0f172a');
+    drawPixelRect(ctx, -10, -10, 5, 38, 'rgba(255,255,255,0.28)');
+    // Cap
+    if (!item.noCap) {
+      drawPixelRect(ctx, -9, -34, 18, 7, '#ef4444', '#0f172a');
+    }
+    // Label
+    if (!item.noLabel) {
+      drawPixelRect(ctx, -12, 2, 24, 16, '#f8fafc', '#334155');
+      drawPixelRect(ctx, -8, 6, 16, 4, darkCol);
+    }
+    // Dirt / Oil overlay
+    if (!item.clean) {
+      ctx.fillStyle = t === 'oily_bottle' ? 'rgba(69, 26, 3, 0.78)' : 'rgba(120, 85, 58, 0.75)';
+      ctx.fillRect(-13, -6, 12, 14);
+      ctx.fillRect(2, 12, 11, 16);
+      if (t === 'oily_bottle') {
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(-6, 4, 4, 4);
+      }
+    }
+  } else if (t === 'can' || t === 'tin_can') {
+    const col = t === 'tin_can' ? '#94a3b8' : '#ef4444';
+    drawPixelRect(ctx, -15, -20, 30, 42, col, '#0f172a');
+    drawPixelRect(ctx, -15, -22, 30, 6, '#cbd5e1', '#0f172a');
+    drawPixelRect(ctx, -15, 18, 30, 5, '#64748b', '#0f172a');
+    if (t === 'can') drawPixelRect(ctx, -11, -6, 22, 12, '#f8fafc');
+    if (!item.clean) {
+      ctx.fillStyle = 'rgba(92, 64, 42, 0.78)';
+      ctx.fillRect(-12, -12, 20, 24);
+    }
+  } else if (t === 'barnacle_iron' || t === 'rust_pipe') {
+    drawPixelRect(ctx, -22, -12, 44, 24, t === 'rust_pipe' ? '#7c2d12' : '#475569', '#0f172a');
+    drawPixelRect(ctx, -18, -8, 36, 5, 'rgba(255,255,255,0.2)');
+    if (!item.clean) {
+      if (t === 'barnacle_iron') {
+        // Barnacle bumps
+        [[-12,-6],[4,-8],[10,4],[-6,6]].forEach(([bx,by]) => {
+          drawPixelRect(ctx, bx-4, by-4, 8, 8, '#fef3c7', '#78350f');
+        });
+      } else {
+        // Rust patches
+        ctx.fillStyle = '#c2410c';
+        ctx.fillRect(-16, -8, 16, 16);
+        ctx.fillRect(4, -4, 14, 14);
+      }
+    }
+  } else if (t === 'wire') {
+    // Copper core
+    drawPixelRect(ctx, -24, -6, 48, 12, '#ea580c', '#0f172a');
+    if (!item.noLabel) {
+      // Black rubber insulation
+      drawPixelRect(ctx, -16, -8, 32, 16, '#1e293b', '#0f172a');
+    }
+  } else if (t === 'radio') {
+    // Electronic appliance
+    drawPixelRect(ctx, -26, -20, 52, 40, '#334155', '#0f172a');
+    // Gold PCB inside
+    drawPixelRect(ctx, -18, -12, 36, 24, '#15803d', '#0f172a');
+    drawPixelRect(ctx, -12, -6, 10, 10, '#eab308');
+    drawPixelRect(ctx, 4, -4, 8, 8, '#eab308');
+    if (!item.noCap) {
+      // Metal cover + 4 screws
+      drawPixelRect(ctx, -24, -18, 48, 36, '#64748b', '#0f172a');
+      const screws = item.screws || [true, true, true, true];
+      const pos = [[-18,-12],[18,-12],[-18,12],[18,12]];
+      pos.forEach(([sx,sy], idx) => {
+        if (screws[idx]) drawPixelRect(ctx, sx-4, sy-4, 8, 8, '#e2e8f0', '#0f172a');
+      });
+    }
+  } else if (t === 'treasure') {
+    drawPixelRect(ctx, -14, -14, 28, 28, '#eab308', '#422006');
+    drawPixelRect(ctx, -8, -8, 16, 16, '#fef08a');
+  }
+  ctx.restore();
+}
+
+function drawBulkBlock(ctx, type, cx, cy, w = 48, h = 34, grade = 'S') {
+  const m = BULK_META[type] || BULK_META.green_glass;
+  const x = Math.round(cx - w/2);
+  const y = Math.round(cy - h/2);
+  const d = 8; // 2.5D depth
+  // Top face
+  ctx.fillStyle = m.top;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + d, y - d);
+  ctx.lineTo(x + w + d, y - d);
+  ctx.lineTo(x + w, y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#0f172a';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Right face
+  ctx.fillStyle = m.side;
+  ctx.beginPath();
+  ctx.moveTo(x + w, y);
+  ctx.lineTo(x + w + d, y - d);
+  ctx.lineTo(x + w + d, y + h - d);
+  ctx.lineTo(x + w, y + h);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Front face
+  drawPixelRect(ctx, x, y, w, h, m.color, '#0f172a');
+  // Highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.22)';
+  ctx.fillRect(x + 4, y + 4, w - 12, 4);
+
+  if (grade === 'B') {
+    ctx.fillStyle = '#451a03';
+    ctx.fillRect(x + w - 12, y + h - 10, 6, 6);
+  }
+}
+
+// ==========================================
+// 4. EXPLORE SCENE STATE
+// ==========================================
+const explore = {
+  px: 180, py: 320,
+  joyActive: false, joyOx: 0, joyOy: 0, joyDx: 0, joyDy: 0,
+  groundItems: [],
+  particles: []
+};
+
+function spawnExploreItems() {
+  const reg = REGIONS.find(r => r.id === state.regionId) || REGIONS[0];
+  explore.groundItems = [];
+  for (let i = 0; i < 14; i++) {
+    const pool = reg.items;
+    const t = pool[Math.floor(Math.random() * pool.length)];
+    explore.groundItems.push({
+      id: Math.random(),
+      type: t,
+      x: 40 + Math.random() * 290,
+      y: 90 + Math.random() * 440,
+      clean: t === 'soju' || t === 'can' || t === 'sea_glass' ? Math.random() > 0.45 : false,
+      noCap: t === 'can' || t === 'tin_can' || t === 'wire' || t === 'barnacle_iron' || t === 'rust_pipe',
+      noLabel: t === 'can' || t === 'tin_can' || t === 'barnacle_iron' || t === 'rust_pipe' || t === 'radio',
+      screws: [true, true, true, true]
+    });
+  }
+  // Tutorial guarantee: 2 soju bottles close to player
+  if (state.tutorialStep === 0) {
+    explore.groundItems[0] = { id: 1, type: 'soju', x: explore.px + 55, y: explore.py - 20, clean: true, noCap: false, noLabel: false };
+    explore.groundItems[1] = { id: 2, type: 'soju', x: explore.px - 50, y: explore.py + 45, clean: true, noCap: false, noLabel: false };
+  }
+}
+spawnExploreItems();
+
+// ==========================================
+// 5. DISASSEMBLE SCENE STATE
+// ==========================================
+const dis = {
+  current: null,
+  dragging: false,
+  dragX: 0, dragY: 0,
+  scrubProgress: 0,
+  rejectTimer: 0,
+  bubbles: []
+};
+
+function pullNextFromCart() {
+  if (dis.current || state.cart.length === 0) return;
+  dis.current = state.cart.shift();
+  dis.scrubProgress = 0;
+  dis.dragging = false;
+  saveState();
+}
+
+function isItemComplete(item) {
+  if (!item) return false;
+  return item.clean && item.noCap && item.noLabel;
+}
+
+function getStorageKeyForItem(item) {
+  const t = item.type;
+  if (t === 'soju' || t === 'oily_bottle') return 'green_glass';
+  if (t === 'beer') return 'brown_glass';
+  if (t === 'sea_glass') return 'sea_glass';
+  if (t === 'can') return 'alu';
+  if (t === 'tin_can' || t === 'barnacle_iron' || t === 'rust_pipe') return 'iron';
+  if (t === 'wire') return 'copper';
+  if (t === 'radio') return 'gold';
+  return 'green_glass';
+}
+
+// ==========================================
+// 6. PROCESS SCENE STATE
+// ==========================================
+const proc = {
+  dragShelfType: null,
+  dragX: 0, dragY: 0,
+  rollerSpin: 0,
+  crucibleDrag: false,
+  crucibleX: 0, crucibleY: 0,
+  pressPlateY: 0,
+  pressDragging: false,
+  steamTimer: 0
+};
+
+function showResultPopup(bulkType, grade) {
+  const meta = BULK_META[bulkType];
+  document.getElementById('res-title').innerText = `${meta.name} 완성!`;
+  const gradeText = grade === 'S' ? 'S급 고순도 (기본가 100%)' : 'B급 불순물 포함 (기본가 70%)';
+  document.getElementById('res-desc').innerText = `${gradeText}\n예상 기본 단가: ${Math.round(meta.base * (grade === 'S' ? 1 : 0.7))} G`;
+  const rc = document.getElementById('res-canvas');
+  const rctx = rc.getContext('2d');
+  rctx.clearRect(0, 0, 96, 96);
+  drawBulkBlock(rctx, bulkType, 44, 52, 54, 38, grade);
+  document.getElementById('result-modal').classList.add('open');
+}
+
+// ==========================================
+// 7. YARD SCENE STATE
+// ==========================================
+const yard = {
+  dragBlock: null,
+  dragX: 0, dragY: 0,
+  shippingAnim: 0, // > 0 when forklift running
+  lastPayout: 0
+};
+
+function getLineBonus(rowIdx) {
+  const start = rowIdx * 4;
+  const row = state.pallet.slice(start, start + 4);
+  if (row.every(b => b !== null && b.type === row[0].type)) {
+    return 1.15;
+  }
+  return 1.0;
+}
+
+function calculateYardValue() {
+  let total = 0;
+  for (let r = 0; r < 3; r++) {
+    const bonus = getLineBonus(r);
+    for (let c = 0; c < 4; c++) {
+      const blk = state.pallet[r * 4 + c];
+      if (blk) {
+        const base = BULK_META[blk.type].base;
+        const rate = state.marketRates[blk.type] || 1.0;
+        const gradeMult = blk.grade === 'S' ? 1.0 : 0.7;
+        total += Math.round(base * rate * gradeMult * bonus);
+      }
+    }
+  }
+  return total;
+}
+
+// ==========================================
+// 8. CANVAS & INPUT HANDLING
+// ==========================================
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let W = 380, H = 680;
+
+function resize() {
+  const rect = document.getElementById('viewport').getBoundingClientRect();
+  W = Math.floor(rect.width);
+  H = Math.floor(rect.height);
+  canvas.width = W;
+  canvas.height = H;
+}
+window.addEventListener('resize', resize);
+resize();
+
+function getMaxCart() {
+  return 10 + (state.upgrades.cart - 1) * 5;
+}
+
+function updateHUD() {
+  document.getElementById('hud-gold').innerText = state.gold.toLocaleString();
+  const reg = REGIONS.find(r => r.id === state.regionId) || REGIONS[0];
+  const titles = {
+    explore: reg.name,
+    disassemble: '해체 작업대',
+    process: '용해 · 압착 가공실',
+    yard: state.yardView === 'pallet' ? '야적장 출하장' : '보물 진열장'
+  };
+  document.getElementById('hud-title').innerText = titles[state.tab];
+
+  // Badges
+  const bCart = document.getElementById('badge-cart');
+  bCart.innerText = `${state.cart.length}/${getMaxCart()}`;
+  bCart.style.background = state.cart.length >= getMaxCart() ? '#10b981' : '#334155';
+
+  const disCount = state.cart.length + (dis.current ? 1 : 0);
+  const bDis = document.getElementById('badge-dis');
+  bDis.style.display = disCount > 0 ? 'block' : 'none';
+  bDis.innerText = disCount;
+
+  const procCount = Object.values(state.storage).reduce((a, b) => a + b, 0);
+  const bProc = document.getElementById('badge-proc');
+  bProc.style.display = procCount > 0 ? 'block' : 'none';
+  bProc.innerText = procCount;
+
+  const yardCount = state.yardQueue.length;
+  const bYard = document.getElementById('badge-yard');
+  bYard.style.display = yardCount > 0 ? 'block' : 'none';
+  bYard.innerText = yardCount;
+
+  // Sub-bar controls
+  const subBar = document.getElementById('sub-bar');
+  subBar.innerHTML = '';
+  if (state.tab === 'explore') {
+    REGIONS.forEach(r => {
+      if (state.unlockedRegions.includes(r.id) || r.event) {
+        const btn = document.createElement('button');
+        btn.className = 'chip-btn' + (state.regionId === r.id ? ' active' : '');
+        btn.innerText = r.name.replace(/^[^\s]+\s/, '');
+        btn.onclick = () => {
+          state.regionId = r.id;
+          spawnExploreItems();
+          updateHUD();
+        };
+        subBar.appendChild(btn);
+      }
+    });
+  } else if (state.tab === 'process') {
+    const b1 = document.createElement('button');
+    b1.className = 'chip-btn' + (state.processLine === 'melt' ? ' active' : '');
+    b1.innerText = '🔥 용해로 라인 (유리·구리·금)';
+    b1.onclick = () => { state.processLine = 'melt'; updateHUD(); };
+    const b2 = document.createElement('button');
+    b2.className = 'chip-btn' + (state.processLine === 'press' ? ' active' : '');
+    b2.innerText = '⚙️ 유압 프레스 (알루미늄·철)';
+    b2.onclick = () => { state.processLine = 'press'; updateHUD(); };
+    subBar.appendChild(b1);
+    subBar.appendChild(b2);
+  } else if (state.tab === 'yard') {
+    const b1 = document.createElement('button');
+    b1.className = 'chip-btn' + (state.yardView === 'pallet' ? ' active' : '');
+    b1.innerText = '📦 팔레트 적재';
+    b1.onclick = () => { state.yardView = 'pallet'; updateHUD(); };
+    const b2 = document.createElement('button');
+    b2.className = 'chip-btn' + (state.yardView === 'showcase' ? ' active' : '');
+    b2.innerText = `🏆 보물 진열장 (${state.treasures.length}/${TREASURES.length})`;
+    b2.onclick = () => { state.yardView = 'showcase'; updateHUD(); };
+    subBar.appendChild(b1);
+    subBar.appendChild(b2);
+  }
+}
+
+// Tab switching
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    sfx.unlock();
+    const tab = btn.dataset.tab;
+    state.tab = tab;
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (tab === 'disassemble') pullNextFromCart();
+    updateHUD();
+  });
+});
+
+// Pointer Events
+canvas.addEventListener('pointerdown', (e) => {
+  sfx.unlock();
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  if (state.tab === 'explore') {
+    // Check full cart return banner
+    if (state.cart.length >= getMaxCart() && y > H - 70) {
+      state.tab = 'disassemble';
+      document.querySelector('[data-tab="disassemble"]').click();
+      return;
+    }
+    explore.joyActive = true;
+    explore.joyOx = x;
+    explore.joyOy = y;
+    explore.joyDx = 0;
+    explore.joyDy = 0;
+  } else if (state.tab === 'disassemble') {
+    if (!dis.current) {
+      pullNextFromCart();
+      return;
+    }
+    const cx = W / 2, cy = H * 0.44;
+    const item = dis.current;
+
+    // 1. Radio screws tapping
+    if (item.type === 'radio' && !item.noCap) {
+      const pos = [[-18,-12],[18,-12],[-18,12],[18,12]];
+      let hitScrew = false;
+      pos.forEach(([sx, sy], idx) => {
+        if (item.screws[idx] && Math.hypot(x - (cx + sx*1.5), y - (cy + sy*1.5)) < 24) {
+          item.screws[idx] = false;
+          hitScrew = true;
+          sfx.play('pop');
+        }
+      });
+      if (hitScrew) {
+        if (item.screws.every(s => !s)) {
+          item.noCap = true;
+          sfx.play('snap');
+        }
+        return;
+      }
+    }
+
+    // 2. Bottle cap flicking
+    if (!item.noCap && item.type !== 'radio' && Math.hypot(x - cx, y - (cy - 48)) < 36) {
+      item.noCap = true;
+      sfx.play('pop');
+      if (state.tutorialStep === 1) state.tutorialStep = 2;
+      return;
+    }
+
+    // 3. Start dragging item (with finger offset)
+    if (Math.hypot(x - cx, y - cy) < 60) {
+      dis.dragging = true;
+      dis.dragX = x;
+      dis.dragY = y - 36;
+    }
+  } else if (state.tab === 'process') {
+    if (state.processLine === 'melt') {
+      // Check top shelf items
+      const meltKeys = ['green_glass', 'brown_glass', 'sea_glass', 'copper', 'gold'];
+      meltKeys.forEach((k, i) => {
+        const sx = 42 + i * 74;
+        const sy = 76;
+        if (state.storage[k] > 0 && Math.hypot(x - sx, y - sy) < 32) {
+          // Validate compatibility with current crucible
+          if (!state.crucible.type || state.crucible.type === k) {
+            if (state.crucible.count < 2 && !state.crucible.melted) {
+              proc.dragShelfType = k;
+              proc.dragX = x;
+              proc.dragY = y - 36;
+            }
+          } else {
+            sfx.play('reject');
+          }
+        }
+      });
+
+      // Red ignition button tap
+      const ignX = 82, ignY = H * 0.72;
+      if (Math.hypot(x - ignX, y - ignY) < 36) {
+        if (state.crucible.count >= 2 && !state.crucible.melted) {
+          const power = 280 + (state.upgrades.furnace - 1) * 140;
+          state.crucible.temp = Math.min(1200, state.crucible.temp + power);
+          sfx.play('fire');
+          if (state.crucible.temp >= 1200) {
+            state.crucible.melted = true;
+            sfx.play('snap');
+            if (state.tutorialStep === 4) state.tutorialStep = 5;
+          }
+          saveState();
+        } else {
+          sfx.play('reject');
+        }
+        return;
+      }
+
+      // Drag melted crucible to mold
+      const crucX = 115, crucY = H * 0.54;
+      if (state.crucible.melted && Math.hypot(x - crucX, y - crucY) < 48) {
+        proc.crucibleDrag = true;
+        proc.crucibleX = x;
+        proc.crucibleY = y - 30;
+      }
+    } else {
+      // Press line: shelf items
+      const pressKeys = ['alu', 'iron'];
+      pressKeys.forEach((k, i) => {
+        const sx = 110 + i * 140;
+        const sy = 76;
+        if (state.storage[k] > 0 && Math.hypot(x - sx, y - sy) < 36) {
+          if (!state.press.type || state.press.type === k) {
+            if (state.press.count < 3) {
+              proc.dragShelfType = k;
+              proc.dragX = x;
+              proc.dragY = y - 36;
+            }
+          } else {
+            sfx.play('reject');
+          }
+        }
+      });
+
+      // Drag hydraulic press plate
+      const plateY = H * 0.36 + proc.pressPlateY;
+      if (state.press.count >= 3 && Math.abs(y - plateY) < 40 && Math.abs(x - W/2) < 90) {
+        proc.pressDragging = true;
+      }
+    }
+  } else if (state.tab === 'yard' && state.yardView === 'pallet') {
+    // Ship button
+    const filled = state.pallet.filter(b => b !== null).length;
+    if (filled > 0 && yard.shippingAnim === 0 && y > H - 72 && x > 30 && x < W - 30) {
+      yard.lastPayout = calculateYardValue();
+      yard.shippingAnim = 1;
+      sfx.play('press');
+      return;
+    }
+
+    // Drag block from queue
+    state.yardQueue.forEach((blk, idx) => {
+      const qx = 56 + idx * 78;
+      const qy = H - 125;
+      if (Math.hypot(x - qx, y - qy) < 36 && !yard.dragBlock) {
+        yard.dragBlock = blk;
+        yard.dragX = x;
+        yard.dragY = y - 32;
+      }
+    });
+  }
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  if (state.tab === 'explore' && explore.joyActive) {
+    const dx = x - explore.joyOx;
+    const dy = y - explore.joyOy;
+    const dist = Math.hypot(dx, dy);
+    const maxR = 42;
+    if (dist > 4) {
+      const clamped = Math.min(dist, maxR);
+      explore.joyDx = (dx / dist) * (clamped / maxR);
+      explore.joyDy = (dy / dist) * (clamped / maxR);
+    } else {
+      explore.joyDx = 0; explore.joyDy = 0;
+    }
+  } else if (state.tab === 'disassemble' && dis.current) {
+    const cx = W / 2, cy = H * 0.44;
+    // Rubbing label / rust / barnacle directly without dragging
+    if (!dis.dragging && Math.hypot(x - cx, y - cy) < 55) {
+      const item = dis.current;
+      if (!item.noLabel || (!item.clean && (item.type === 'barnacle_iron' || item.type === 'rust_pipe'))) {
+        dis.scrubProgress += 6 * state.upgrades.tool;
+        if (dis.scrubProgress >= 100) {
+          if (!item.noLabel) item.noLabel = true;
+          if (item.type === 'barnacle_iron' || item.type === 'rust_pipe') item.clean = true;
+          dis.scrubProgress = 0;
+          sfx.play('peel');
+          if (state.tutorialStep === 2) state.tutorialStep = 3;
+        }
+      }
+    }
+
+    if (dis.dragging) {
+      dis.dragX = x;
+      dis.dragY = y - 36;
+      // Check water tub wash (Left zone)
+      if (!dis.current.clean && Math.hypot(dis.dragX - 65, dis.dragY - H * 0.46) < 54) {
+        dis.scrubProgress += 8 * state.upgrades.washer;
+        if (Math.random() < 0.35) {
+          dis.bubbles.push({ x: 50 + Math.random()*30, y: H*0.46, r: 4 + Math.random()*5, life: 20 });
+        }
+        if (dis.scrubProgress >= 100) {
+          dis.current.clean = true;
+          dis.scrubProgress = 0;
+          sfx.play('wash');
+        }
+      }
+    }
+  } else if (state.tab === 'process') {
+    if (proc.dragShelfType) {
+      proc.dragX = x;
+      proc.dragY = y - 36;
+      if (state.processLine === 'melt') {
+        // Check roller crusher zone
+        if (Math.hypot(proc.dragX - W/2, proc.dragY - H * 0.31) < 52) {
+          const k = proc.dragShelfType;
+          const qArr = state.storageQuality[k];
+          const isClean = qArr && qArr.length > 0 ? qArr.shift() : true;
+          state.storage[k]--;
+          state.crucible.type = k;
+          state.crucible.count++;
+          if (!isClean) state.crucible.clean = false;
+          proc.dragShelfType = null;
+          proc.rollerSpin = 25;
+          sfx.play('crush');
+          if (state.tutorialStep === 3 && state.crucible.count >= 2) state.tutorialStep = 4;
+          updateHUD();
+          saveState();
+        }
+      } else {
+        // Press chamber zone
+        if (Math.hypot(proc.dragX - W/2, proc.dragY - H * 0.56) < 65) {
+          const k = proc.dragShelfType;
+          const qArr = state.storageQuality[k];
+          const isClean = qArr && qArr.length > 0 ? qArr.shift() : true;
+          state.storage[k]--;
+          state.press.type = k;
+          state.press.count++;
+          if (!isClean) state.press.clean = false;
+          proc.dragShelfType = null;
+          sfx.play('snap');
+          updateHUD();
+          saveState();
+        }
+      }
+    }
+    if (proc.crucibleDrag) {
+      proc.crucibleX = x;
+      proc.crucibleY = y - 30;
+      // Mold target on right
+      if (Math.hypot(proc.crucibleX - (W - 95), proc.crucibleY - H * 0.54) < 55) {
+        const map = {
+          green_glass: 'green_glass',
+          brown_glass: 'brown_glass',
+          sea_glass: 'sea_glass_blk',
+          copper: 'copper_ingot',
+          gold: 'gold_bar'
+        };
+        const outType = map[state.crucible.type] || 'green_glass';
+        const grade = state.crucible.clean ? 'S' : 'B';
+        state.yardQueue.push({ id: Math.random(), type: outType, grade });
+        state.crucible = { type: null, count: 0, temp: 0, melted: false, clean: true };
+        proc.crucibleDrag = false;
+        proc.steamTimer = 35;
+        sfx.play('steam');
+        if (state.tutorialStep === 5) state.tutorialStep = 6;
+        updateHUD();
+        saveState();
+        showResultPopup(outType, grade);
+      }
+    }
+    if (proc.pressDragging) {
+      const startY = H * 0.36;
+      const delta = Math.max(0, Math.min(115, y - startY));
+      proc.pressPlateY = delta;
+      if (delta >= 110) {
+        const outType = state.press.type === 'iron' ? 'steel_block' : 'alu_cube';
+        const grade = state.press.clean ? 'S' : 'B';
+        state.yardQueue.push({ id: Math.random(), type: outType, grade });
+        state.press = { type: null, count: 0, progress: 0, clean: true };
+        proc.pressDragging = false;
+        proc.pressPlateY = 0;
+        sfx.play('press');
+        updateHUD();
+        saveState();
+        showResultPopup(outType, grade);
+      }
+    }
+  } else if (state.tab === 'yard' && yard.dragBlock) {
+    yard.dragX = x;
+    yard.dragY = y - 32;
+  }
+});
+
+canvas.addEventListener('pointerup', () => {
+  explore.joyActive = false;
+  explore.joyDx = 0; explore.joyDy = 0;
+
+  if (state.tab === 'disassemble' && dis.dragging && dis.current) {
+    // Drop into bottom storage bin
+    if (dis.dragY > H * 0.72) {
+      if (isItemComplete(dis.current)) {
+        const k = getStorageKeyForItem(dis.current);
+        state.storage[k] = (state.storage[k] || 0) + 1;
+        state.storageQuality[k].push(true);
+        sfx.play('snap');
+        dis.current = null;
+        if (state.tutorialStep === 3 && state.cart.length === 0) {
+          // Keep step 3 until processed
+        }
+        pullNextFromCart();
+        updateHUD();
+        saveState();
+      } else {
+        // Bounce back rejection
+        dis.rejectTimer = 25;
+        sfx.play('reject');
+      }
+    }
+    dis.dragging = false;
+  }
+
+  proc.dragShelfType = null;
+  proc.crucibleDrag = false;
+  if (proc.pressDragging) {
+    proc.pressDragging = false;
+    proc.pressPlateY = 0;
+  }
+
+  if (state.tab === 'yard' && yard.dragBlock) {
+    // Check pallet slot snap
+    const startX = (W - 260) / 2;
+    const startY = 120;
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 4; c++) {
+        const sx = startX + c * 66 + 30;
+        const sy = startY + r * 62 + 28;
+        if (Math.hypot(yard.dragX - sx, yard.dragY - sy) < 36 && !state.pallet[r * 4 + c]) {
+          state.pallet[r * 4 + c] = yard.dragBlock;
+          state.yardQueue = state.yardQueue.filter(b => b.id !== yard.dragBlock.id);
+          sfx.play('snap');
+          if (state.tutorialStep === 6) {
+            state.tutorialStep = 99;
+            if (!state.treasures.includes('watch')) state.treasures.push('watch');
+          }
+          updateHUD();
+          saveState();
+          break;
+        }
+      }
+    }
+    yard.dragBlock = null;
+  }
+});
+
+// ==========================================
+// 9. MAIN UPDATE & RENDER LOOP
+// ==========================================
+function update() {
+  if (state.tab === 'explore') {
+    const speed = 3.2;
+    explore.px = Math.max(28, Math.min(W - 28, explore.px + explore.joyDx * speed));
+    explore.py = Math.max(68, Math.min(H - 80, explore.py + explore.joyDy * speed));
+
+    const magnetR = 36 + (state.upgrades.cart - 1) * 14;
+    for (let i = explore.groundItems.length - 1; i >= 0; i--) {
+      const it = explore.groundItems[i];
+      if (Math.hypot(explore.px - it.x, explore.py - it.y) < magnetR) {
+        if (it.type === 'treasure') {
+          const unowned = TREASURES.filter(t => !state.treasures.includes(t.id));
+          if (unowned.length > 0) state.treasures.push(unowned[0].id);
+          explore.groundItems.splice(i, 1);
+          sfx.play('coin');
+          saveState();
+        } else if (state.cart.length < getMaxCart()) {
+          state.cart.push(it);
+          explore.groundItems.splice(i, 1);
+          sfx.play('pickup');
+          if (state.tutorialStep === 0 && state.cart.length >= 2) {
+            state.tutorialStep = 1;
+          }
+          updateHUD();
+          saveState();
+        }
+      }
+    }
+    if (explore.groundItems.length < 6) {
+      spawnExploreItems();
+    }
+  }
+
+  if (dis.rejectTimer > 0) dis.rejectTimer--;
+  for (let i = dis.bubbles.length - 1; i >= 0; i--) {
+    dis.bubbles[i].y -= 1.2;
+    dis.bubbles[i].life--;
+    if (dis.bubbles[i].life <= 0) dis.bubbles.splice(i, 1);
+  }
+  if (proc.rollerSpin > 0) proc.rollerSpin--;
+  if (proc.steamTimer > 0) proc.steamTimer--;
+
+  if (yard.shippingAnim > 0) {
+    yard.shippingAnim += 2.5;
+    if (yard.shippingAnim > 110) {
+      state.gold += yard.lastPayout;
+      state.pallet = Array(12).fill(null);
+      yard.shippingAnim = 0;
+      // Fluctuate market prices
+      Object.keys(state.marketRates).forEach(k => {
+        state.marketRates[k] = Number((0.85 + Math.random() * 0.65).toFixed(2));
+      });
+      sfx.play('coin');
+      updateHUD();
+      saveState();
+    }
+  }
+}
+
+function drawTutorialHand(x, y) {
+  const pulse = Math.sin(Date.now() / 180) * 6;
+  ctx.save();
+  ctx.translate(x, y + pulse);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.strokeStyle = '#0f172a';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(0, 0, 12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#38bdf8';
+  ctx.fillRect(-3, -18, 6, 12);
+  ctx.restore();
+}
+
+function render() {
+  ctx.clearRect(0, 0, W, H);
+
+  if (state.tab === 'explore') {
+    const reg = REGIONS.find(r => r.id === state.regionId) || REGIONS[0];
+    ctx.fillStyle = reg.bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Pixel ground tiles
+    ctx.fillStyle = 'rgba(255,255,255,0.03)';
+    for (let gx = 16; gx < W; gx += 48) {
+      for (let gy = 56; gy < H; gy += 48) {
+        ctx.fillRect(gx, gy, 24, 24);
+      }
+    }
+
+    // Ground items
+    explore.groundItems.forEach(it => {
+      drawItemSprite(ctx, it, it.x, it.y, 0.72);
+    });
+
+    // Player + Cart (scales visually with cart upgrade)
+    const lv = state.upgrades.cart;
+    drawPixelRect(ctx, explore.px - 28 - lv*3, explore.py - 12, 22 + lv*3, 24, lv >= 3 ? '#38bdf8' : '#92400e', '#0f172a');
+    drawPixelRect(ctx, explore.px - 10, explore.py - 16, 20, 28, '#f59e0b', '#0f172a');
+    drawPixelRect(ctx, explore.px - 8, explore.py - 26, 16, 12, '#fde68a', '#0f172a');
+
+    // Floating Joystick
+    if (explore.joyActive) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(explore.joyOx, explore.joyOy, 42, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(56,189,248,0.65)';
+      ctx.beginPath();
+      ctx.arc(explore.joyOx + explore.joyDx * 42, explore.joyOy + explore.joyDy * 42, 16, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Full cart banner
+    if (state.cart.length >= getMaxCart()) {
+      drawPixelRect(ctx, 20, H - 62, W - 40, 48, '#10b981', '#064e3b');
+      ctx.fillStyle = '#042f2e';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('운반차 가득 참! 터치하여 해체 작업대로 이동 →', W/2, H - 33);
+    }
+
+    if (state.tutorialStep === 0 && explore.groundItems[0]) {
+      drawTutorialHand(explore.groundItems[0].x, explore.groundItems[0].y);
+    }
+  } else if (state.tab === 'disassemble') {
+    // Warm wooden workbench background
+    ctx.fillStyle = '#3b2d22';
+    ctx.fillRect(0, 0, W, H);
+    drawPixelRect(ctx, 16, 56, W - 32, H * 0.62, '#5c4332', '#291d15');
+
+    // Left Water Tub
+    drawPixelRect(ctx, 24, H * 0.36, 82, 110, '#0284c7', '#0f172a');
+    ctx.fillStyle = '#7dd3fc';
+    ctx.fillRect(30, H * 0.38, 70, 12);
+    ctx.fillStyle = '#e0f2fe';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(state.upgrades.washer > 1 ? '고압세척통' : '세척 물통', 65, H * 0.36 + 100);
+
+    // Bubbles
+    dis.bubbles.forEach(b => {
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Current Item
+    const cx = W / 2, cy = H * 0.44;
+    if (dis.current) {
+      const ix = dis.dragging ? dis.dragX : cx;
+      const iy = dis.dragging ? dis.dragY : (cy - (dis.rejectTimer > 0 ? 28 : 0));
+      drawItemSprite(ctx, dis.current, ix, iy, 1.5);
+
+      // Status checklist
+      const it = dis.current;
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillStyle = it.clean ? '#4ade80' : '#fca5a5';
+      ctx.fillText(it.clean ? '✔ 세척 완료' : '✖ 물통에 담가 세척', cx, cy + 72);
+      ctx.fillStyle = it.noCap ? '#4ade80' : '#fca5a5';
+      ctx.fillText(it.noCap ? '✔ 뚜껑/나사 제거' : '✖ 상단 뚜껑/나사 탭', cx, cy + 90);
+      ctx.fillStyle = it.noLabel ? '#4ade80' : '#fca5a5';
+      ctx.fillText(it.noLabel ? '✔ 라벨/표면 정리' : '✖ 몸통 문질러 제거', cx, cy + 108);
+
+      if (dis.rejectTimer > 0) {
+        ctx.fillStyle = '#ef4444';
+        ctx.fillText('손질이 끝나지 않았습니다!', cx, cy - 72);
+      }
+
+      if (state.tutorialStep === 1) drawTutorialHand(cx, cy - 48);
+      else if (state.tutorialStep === 2) drawTutorialHand(cx + 15, cy);
+      else if (state.tutorialStep === 3) drawTutorialHand(cx, H * 0.82);
+    } else {
+      ctx.fillStyle = '#d6c7b8';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(state.cart.length > 0 ? '화면을 터치해 다음 쓰레기 꺼내기' : '운반차가 비었습니다. 탐색으로 나가세요!', cx, cy);
+    }
+
+    // Bottom Storage Drop Zone
+    drawPixelRect(ctx, 16, H * 0.74, W - 32, H * 0.22, '#1e293b', '#475569');
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('▼ 손질 완료 후 아래 보관함으로 끌어내려 투하 ▼', W / 2, H * 0.74 + 24);
+  } else if (state.tab === 'process') {
+    // Dark cast-iron smelter room
+    ctx.fillStyle = '#14171d';
+    ctx.fillRect(0, 0, W, H);
+
+    if (state.processLine === 'melt') {
+      // Top Material Shelf
+      drawPixelRect(ctx, 12, 46, W - 24, 62, '#222733', '#334155');
+      const meltKeys = [
+        { k: 'green_glass', label: '초록병', col: '#10b981' },
+        { k: 'brown_glass', label: '갈색병', col: '#b45309' },
+        { k: 'sea_glass', label: '바다유리', col: '#06b6d4' },
+        { k: 'copper', label: '구리', col: '#ea580c' },
+        { k: 'gold', label: '금기판', col: '#eab308' }
+      ];
+      meltKeys.forEach((m, i) => {
+        const sx = 42 + i * 74;
+        const sy = 76;
+        drawPixelRect(ctx, sx - 26, sy - 22, 52, 44, '#161a22', state.storage[m.k] > 0 ? m.col : '#334155');
+        ctx.fillStyle = m.col;
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(m.label, sx, sy - 4);
+        ctx.fillStyle = '#fff';
+        ctx.fillText(`x${state.storage[m.k] || 0}`, sx, sy + 13);
+      });
+
+      // Middle Roller Crusher
+      drawPixelRect(ctx, W/2 - 75, H * 0.26, 150, 56, '#334155', '#64748b');
+      const spinOff = (proc.rollerSpin % 4) * 4;
+      drawPixelRect(ctx, W/2 - 55 + spinOff, H * 0.28, 42, 28, '#94a3b8', '#0f172a');
+      drawPixelRect(ctx, W/2 + 13 - spinOff, H * 0.28, 42, 28, '#94a3b8', '#0f172a');
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillText('▼ 롤러 파쇄 투입구 ▼', W/2, H * 0.25);
+
+      // Crucible (Left-Bottom)
+      const cX = proc.crucibleDrag ? proc.crucibleX : 115;
+      const cY = proc.crucibleDrag ? proc.crucibleY : H * 0.54;
+      drawPixelRect(ctx, cX - 42, cY - 32, 84, 64, '#374151', state.crucible.melted ? '#f97316' : '#0f172a');
+
+      // Crucible fill visual (50% vs 100% heaped)
+      if (state.crucible.count > 0) {
+        const fillCol = state.crucible.melted ? '#fb923c' : '#34d399';
+        const fh = state.crucible.count === 1 ? 26 : 52;
+        drawPixelRect(ctx, cX - 36, cY + 26 - fh, 72, fh, fillCol);
+        if (state.crucible.count >= 2 && !state.crucible.melted) {
+          // Heaped mound over rim
+          drawPixelRect(ctx, cX - 24, cY - 38, 48, 12, fillCol);
+        }
+      }
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillText(state.crucible.melted ? '용해 완료! 우측으로 드래그' : `도가니 (${state.crucible.count}/2)`, cX, cY + 46);
+
+      // Red Ignition Button & Temp Gauge
+      const ignX = 82, ignY = H * 0.72;
+      ctx.fillStyle = state.crucible.count >= 2 && !state.crucible.melted ? '#ef4444' : '#475569';
+      ctx.beginPath();
+      ctx.arc(ignX, ignY, 30, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#fca5a5';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText('점화', ignX, ignY + 4);
+
+      // Temp bar
+      drawPixelRect(ctx, 130, ignY - 14, 110, 28, '#1e293b', '#475569');
+      const pct = state.crucible.temp / 1200;
+      drawPixelRect(ctx, 132, ignY - 12, 106 * pct, 24, pct >= 1 ? '#f97316' : '#eab308');
+      ctx.fillStyle = '#fff';
+      ctx.fillText(`${state.crucible.temp}°C / 1200°C`, 185, ignY + 4);
+
+      // Right Mold
+      const mX = W - 95, mY = H * 0.54;
+      drawPixelRect(ctx, mX - 44, mY - 30, 88, 60, '#1e293b', '#64748b');
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('성형 거푸집', mX, mY + 46);
+      if (proc.steamTimer > 0) {
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+        ctx.beginPath();
+        ctx.arc(mX, mY - 15, 28, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Dragged shelf item
+      if (proc.dragShelfType) {
+        drawPixelRect(ctx, proc.dragX - 18, proc.dragY - 24, 36, 48, '#10b981', '#fff');
+      }
+
+      if (state.tutorialStep === 3) drawTutorialHand(W/2, H * 0.31);
+      else if (state.tutorialStep === 4) drawTutorialHand(ignX, ignY);
+      else if (state.tutorialStep === 5) drawTutorialHand(mX, mY);
+
+    } else {
+      // Hydraulic Press Line
+      drawPixelRect(ctx, 12, 46, W - 24, 62, '#222733', '#334155');
+      const pressKeys = [
+        { k: 'alu', label: '알루미늄 캔', col: '#94a3b8' },
+        { k: 'iron', label: '고철·뚜껑', col: '#64748b' }
+      ];
+      pressKeys.forEach((m, i) => {
+        const sx = 110 + i * 140;
+        const sy = 76;
+        drawPixelRect(ctx, sx - 48, sy - 22, 96, 44, '#161a22', state.storage[m.k] > 0 ? m.col : '#334155');
+        ctx.fillStyle = '#e2e8f0';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${m.label} x${state.storage[m.k] || 0}`, sx, sy + 4);
+      });
+
+      // Press Chamber
+      drawPixelRect(ctx, W/2 - 70, H * 0.42, 140, 140, '#1e293b', '#475569');
+      // Items inside chamber
+      for (let c = 0; c < state.press.count; c++) {
+        drawPixelRect(ctx, W/2 - 50 + c*34, H * 0.58, 28, 34, state.press.type === 'iron' ? '#64748b' : '#cbd5e1', '#0f172a');
+      }
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText(`투입량: ${state.press.count} / 3`, W/2, H * 0.67);
+
+      // Hydraulic Plate
+      const plateY = H * 0.36 + proc.pressPlateY;
+      drawPixelRect(ctx, W/2 - 20, H * 0.24, 40, plateY - H * 0.24, '#64748b', '#0f172a');
+      drawPixelRect(ctx, W/2 - 78, plateY - 14, 156, 28, state.press.count >= 3 ? '#eab308' : '#475569', '#0f172a');
+      ctx.fillStyle = '#0f172a';
+      ctx.fillText(state.press.count >= 3 ? '▼ 아래로 끌어내려 압착 ▼' : '3개 투입 대기', W/2, plateY + 4);
+
+      if (proc.dragShelfType) {
+        drawPixelRect(ctx, proc.dragX - 18, proc.dragY - 22, 36, 44, '#94a3b8', '#fff');
+      }
+    }
+  } else if (state.tab === 'yard') {
+    ctx.fillStyle = '#1b2028';
+    ctx.fillRect(0, 0, W, H);
+
+    if (state.yardView === 'pallet') {
+      // Market Ticker
+      drawPixelRect(ctx, 12, 46, W - 24, 34, '#13171e', '#334155');
+      ctx.fillStyle = '#fde047';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`시세: 초록유리 ${Math.round(state.marketRates.green_glass*100)}% | 알루 ${Math.round(state.marketRates.alu_cube*100)}% | 구리 ${Math.round(state.marketRates.copper_ingot*100)}% | 금 ${Math.round(state.marketRates.gold_bar*100)}%`, W/2, 67);
+
+      // Wooden Pallet (4x3)
+      const startX = (W - 260) / 2;
+      const startY = 120;
+      const shiftX = yard.shippingAnim > 0 ? yard.shippingAnim * 3.5 : 0;
+
+      ctx.save();
+      ctx.translate(shiftX, 0);
+      drawPixelRect(ctx, startX - 12, startY - 12, 284, 210, '#78350f', '#451a03');
+      for (let r = 0; r < 3; r++) {
+        const isRowBonus = getLineBonus(r) > 1;
+        for (let c = 0; c < 4; c++) {
+          const sx = startX + c * 66;
+          const sy = startY + r * 62;
+          drawPixelRect(ctx, sx, sy, 60, 56, isRowBonus ? '#1e3a2f' : '#291d15', isRowBonus ? '#10b981' : '#5c4332');
+          const blk = state.pallet[r * 4 + c];
+          if (blk) {
+            drawBulkBlock(ctx, blk.type, sx + 26, sy + 30, 44, 30, blk.grade);
+          }
+        }
+      }
+
+      // Forklift animation
+      if (yard.shippingAnim > 0) {
+        drawPixelRect(ctx, startX - 75, startY + 60, 58, 90, '#eab308', '#0f172a');
+        drawPixelRect(ctx, startX - 16, startY + 140, 260, 10, '#94a3b8', '#0f172a');
+      }
+      ctx.restore();
+
+      // Queue
+      drawPixelRect(ctx, 12, H - 165, W - 24, 82, '#151921', '#334155');
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('완성 벌크 대기열 (위로 끌어 팔레트에 적재)', 22, H - 148);
+      state.yardQueue.forEach((blk, idx) => {
+        if (idx < 4) {
+          const qx = 56 + idx * 78;
+          const qy = H - 112;
+          drawBulkBlock(ctx, blk.type, qx, qy, 44, 30, blk.grade);
+        }
+      });
+
+      // Ship Button
+      const payout = calculateYardValue();
+      drawPixelRect(ctx, 24, H - 68, W - 48, 52, payout > 0 ? '#10b981' : '#334155', '#0f172a');
+      ctx.fillStyle = payout > 0 ? '#042f2e' : '#64748b';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(payout > 0 ? `지게차 랩핑 및 출하하기 (+${payout.toLocaleString()} G)` : '팔레트에 블록을 적재하세요', W/2, H - 37);
+
+      if (yard.dragBlock) {
+        drawBulkBlock(ctx, yard.dragBlock.type, yard.dragX, yard.dragY, 48, 34, yard.dragBlock.grade);
+      }
+      if (state.tutorialStep === 6 && state.yardQueue.length > 0) {
+        drawTutorialHand(startX + 30, startY + 28);
+      }
+    } else {
+      // Treasure Showcase
+      drawPixelRect(ctx, 20, 64, W - 40, H - 100, '#291d15', '#78350f');
+      ctx.fillStyle = '#fde047';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('수집한 희귀 보물 진열장', W/2, 92);
+
+      TREASURES.forEach((tr, idx) => {
+        const col = idx % 2;
+        const row = Math.floor(idx / 2);
+        const bx = 50 + col * 150;
+        const by = 120 + row * 150;
+        const owned = state.treasures.includes(tr.id);
+        drawPixelRect(ctx, bx, by, 120, 120, '#1c140e', owned ? '#eab308' : '#451a03');
+        if (owned) {
+          drawPixelRect(ctx, bx + 36, by + 26, 48, 48, tr.color, '#0f172a');
+          ctx.fillStyle = '#fef08a';
+          ctx.font = 'bold 11px sans-serif';
+          ctx.fillText(tr.name, bx + 60, by + 100);
+        } else {
+          ctx.fillStyle = '#78350f';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.fillText('???', bx + 60, by + 65);
+        }
+      });
+    }
+  }
+}
+
+function loop() {
+  update();
+  render();
+  requestAnimationFrame(loop);
+}
+updateHUD();
+loop();
+
+// ==========================================
+// 10. MODALS (RESULT, SHOP, SETTINGS)
+// ==========================================
+document.getElementById('res-close').onclick = () => {
+  document.getElementById('result-modal').classList.remove('open');
+};
+document.getElementById('result-modal').onclick = (e) => {
+  if (e.target.id === 'result-modal') {
+    document.getElementById('result-modal').classList.remove('open');
+  }
+};
+
+function renderShop() {
+  const list = document.getElementById('shop-list');
+  list.innerHTML = '';
+
+  const upgItems = [
+    { key: 'cart', title: `운반차 확장 (Lv.${state.upgrades.cart})`, desc: '적재 용량 +5 & 자석 반경 증가', cost: state.upgrades.cart * 300 },
+    { key: 'washer', title: `세척 시스템 (Lv.${state.upgrades.washer})`, desc: '물통 세척 속도 대폭 증가', cost: state.upgrades.washer * 350 },
+    { key: 'tool', title: `해체 공구 (Lv.${state.upgrades.tool})`, desc: '라벨·녹·따개비 제거 속도 증가', cost: state.upgrades.tool * 350 },
+    { key: 'furnace', title: `고화력 버너 (Lv.${state.upgrades.furnace})`, desc: '점화 1회당 온도 상승량 증가', cost: state.upgrades.furnace * 400 }
+  ];
+
+  upgItems.forEach(u => {
+    const div = document.createElement('div');
+    div.className = 'shop-item';
+    const maxed = state.upgrades[u.key] >= 4;
+    div.innerHTML = `
+      <div class="shop-item-info">
+        <strong>${u.title}</strong>
+        <span>${u.desc}</span>
+      </div>
+      <button class="buy-btn" ${maxed || state.gold < u.cost ? 'disabled' : ''}>
+        ${maxed ? 'MAX' : u.cost + ' G'}
+      </button>
+    `;
+    div.querySelector('button').onclick = () => {
+      if (!maxed && state.gold >= u.cost) {
+        state.gold -= u.cost;
+        state.upgrades[u.key]++;
+        sfx.play('coin');
+        updateHUD();
+        saveState();
+        renderShop();
+      }
+    };
+    list.appendChild(div);
+  });
+
+  REGIONS.filter(r => !r.event && r.cost > 0).forEach(r => {
+    const owned = state.unlockedRegions.includes(r.id);
+    const div = document.createElement('div');
+    div.className = 'shop-item';
+    div.innerHTML = `
+      <div class="shop-item-info">
+        <strong>지역: ${r.name}</strong>
+        <span>신규 자원 및 고가 폐기물 등장</span>
+      </div>
+      <button class="buy-btn" ${owned || state.gold < r.cost ? 'disabled' : ''}>
+        ${owned ? '해금됨' : r.cost + ' G'}
+      </button>
+    `;
+    div.querySelector('button').onclick = () => {
+      if (!owned && state.gold >= r.cost) {
+        state.gold -= r.cost;
+        state.unlockedRegions.push(r.id);
+        state.regionId = r.id;
+        spawnExploreItems();
+        sfx.play('coin');
+        updateHUD();
+        saveState();
+        renderShop();
+      }
+    };
+    list.appendChild(div);
+  });
+}
+
+document.getElementById('btn-shop').onclick = () => {
+  renderShop();
+  document.getElementById('shop-modal').classList.add('open');
+};
+document.getElementById('shop-close').onclick = () => {
+  document.getElementById('shop-modal').classList.remove('open');
+};
+
+document.getElementById('btn-settings').onclick = () => {
+  document.getElementById('toggle-sound').innerText = `ASMR 효과음: ${state.sound ? 'ON' : 'OFF'}`;
+  document.getElementById('toggle-haptic').innerText = `진동 피드백: ${state.haptic ? 'ON' : 'OFF'}`;
+  document.getElementById('settings-modal').classList.add('open');
+};
+document.getElementById('settings-close').onclick = () => {
+  document.getElementById('settings-modal').classList.remove('open');
+};
+document.getElementById('toggle-sound').onclick = () => {
+  state.sound = !state.sound;
+  sfx.enabled = state.sound;
+  document.getElementById('toggle-sound').innerText = `ASMR 효과음: ${state.sound ? 'ON' : 'OFF'}`;
+  saveState();
+};
+document.getElementById('toggle-haptic').onclick = () => {
+  state.haptic = !state.haptic;
+  sfx.haptic = state.haptic;
+  document.getElementById('toggle-haptic').innerText = `진동 피드백: ${state.haptic ? 'ON' : 'OFF'}`;
+  saveState();
+};
+document.getElementById('reset-save').onclick = () => {
+  localStorage.removeItem('junkyard_tycoon_v1');
+  state = defaultState();
+  dis.current = null;
+  spawnExploreItems();
+  updateHUD();
+  document.getElementById('settings-modal').classList.remove('open');
+};
+</script>
+</body>
+</html>
